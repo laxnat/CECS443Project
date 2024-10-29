@@ -33,6 +33,10 @@ let cameraY = 0;
 let mouseX = 0;
 let mouseY = 0;
 
+// Survivor sprite
+const survivor = new Image();
+survivor.src = 'Survivor.png';
+
 // Dynamically resize the canvas to fit the window
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -213,13 +217,25 @@ function shootBullet() {
         const directionX = dx / distance;
         const directionY = dy / distance;
 
+        // Calculate the angle in radians
+        const angle = Math.atan2(dy, dx);
+
+        // Define the gun tip offset from the sprite center, based on sprite dimensions
+        const gunTipOffsetX = survivor.width / 2 - 225;
+        const gunTipOffsetY = 15;
+
+        // Rotate the gun tip position to match the player's current rotation
+        const rotatedGunTipX = player.x + Math.cos(angle) * gunTipOffsetX - Math.sin(angle) * gunTipOffsetY;
+        const rotatedGunTipY = player.y + Math.sin(angle) * gunTipOffsetX + Math.cos(angle) * gunTipOffsetY;
+
+        // Initialize the bullet at the calculated gun tip position
         const bullet = {
-            x: player.x,
-            y: player.y,
-            damage: bulletDamage, // Damage done by each bullet
-            radius: bulletSize, // Radius of the bullet
-            velocityX: directionX * 7, // Adjust speed of the bullet
-            velocityY: directionY * 7, // Adjust speed of the bullet
+            x: rotatedGunTipX,
+            y: rotatedGunTipY,
+            damage: bulletDamage,
+            radius: bulletSize,
+            velocityX: directionX * 7,
+            velocityY: directionY * 7,
             move: function() {
                 this.x += this.velocityX;
                 this.y += this.velocityY;
@@ -278,49 +294,30 @@ canvas.addEventListener('mousemove', (event) => {
 
 function drawPlayers() {
     Object.values(players).forEach((player) => {
-        // Draw each player (circle)
-        ctx.beginPath();
-        ctx.arc(player.x - cameraX, player.y - cameraY, player.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = player.color;
-        ctx.fill();
-        ctx.strokeStyle = 'black'; // Outline color
-        ctx.lineWidth = 2; // Outline width
-        ctx.stroke(); // Draw outline
-
         // Calculate the angle from the player to the mouse
         const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
 
-        // Position the rectangle (gun) directly in front of the player
-        const gunLength = 30; // Length of the gun
-        const gunWidth = 10; // Width of the gun
-
-        // Calculate the gun's position based on player's position and angle
-        const gunX = player.x - cameraX + Math.cos(angle) * player.radius; // Position the gun in front
-        const gunY = player.y - cameraY + Math.sin(angle) * player.radius; // Position the gun in front
-
-        // Save the current context
+        // Save the current context before rotating
         ctx.save();
 
-        // Move the origin to the gun's position
-        ctx.translate(gunX, gunY);
-        
-        // Rotate the context to the angle
+        // Move the origin to the player's position
+        ctx.translate(player.x - cameraX, player.y - cameraY);
+
+        // Rotate the context to face the mouse
         ctx.rotate(angle);
 
-        // Draw the rectangle (gun)
-        ctx.fillStyle = 'blue'; // Gun color
-        ctx.fillRect(-gunLength / 2, -gunWidth / 2, gunLength, gunWidth); // Center the rectangle around the origin
+         // Define a fixed width for the sprite
+         const fixedWidth = 80; // Set your desired width
+         const aspectRatio = survivor.height / survivor.width;
+         const fixedHeight = fixedWidth * aspectRatio; // Keep the height proportional
 
-        // Draw gun outline
-        ctx.strokeStyle = 'black'; // Outline color for gun
-        ctx.lineWidth = 2; // Outline width for gun
-        ctx.strokeRect(-gunLength / 2, -gunWidth / 2, gunLength, gunWidth); // Center the rectangle around the origin
+        // Draw the sprite image, centered around the player’s position
+        ctx.drawImage(survivor, -fixedWidth / 2, -fixedHeight / 2, fixedWidth, fixedHeight);
 
-        // Restore the context to its original state
+        // Restore the context to avoid affecting other drawings
         ctx.restore();
     });
 }
-
 
 function drawZombies() {
     zombies.forEach((zombie) => {
