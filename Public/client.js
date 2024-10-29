@@ -37,6 +37,12 @@ let mouseY = 0;
 const survivor = new Image();
 survivor.src = 'Survivor.png';
 
+// Gun flash image
+const gunFlash = new Image();
+gunFlash.src = 'flash.png';
+let showFlash = false;
+let flashTimeout;
+
 // Dynamically resize the canvas to fit the window
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -206,29 +212,23 @@ function moveZombies() {
 function shootBullet() {
     const player = players[playerId];
     if (player) {
-        // Calculate the direction to the mouse
+        // Calculate direction and angle as before
         const mouseWorldX = mouseX + cameraX;
         const mouseWorldY = mouseY + cameraY;
         const dx = mouseWorldX - player.x;
         const dy = mouseWorldY - player.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Normalize the direction
         const directionX = dx / distance;
         const directionY = dy / distance;
 
-        // Calculate the angle in radians
         const angle = Math.atan2(dy, dx);
-
-        // Define the gun tip offset from the sprite center, based on sprite dimensions
         const gunTipOffsetX = survivor.width / 2 - 225;
         const gunTipOffsetY = 15;
 
-        // Rotate the gun tip position to match the player's current rotation
         const rotatedGunTipX = player.x + Math.cos(angle) * gunTipOffsetX - Math.sin(angle) * gunTipOffsetY;
         const rotatedGunTipY = player.y + Math.sin(angle) * gunTipOffsetX + Math.cos(angle) * gunTipOffsetY;
 
-        // Initialize the bullet at the calculated gun tip position
         const bullet = {
             x: rotatedGunTipX,
             y: rotatedGunTipY,
@@ -241,8 +241,14 @@ function shootBullet() {
                 this.y += this.velocityY;
             }
         };
-
         bullets.push(bullet);
+
+        // Show the flash for a brief moment
+        showFlash = true;
+        clearTimeout(flashTimeout); // Clear previous timer if any
+        flashTimeout = setTimeout(() => {
+            showFlash = false;
+        }, 50); // Flash duration in milliseconds
     }
 }
 
@@ -294,30 +300,40 @@ canvas.addEventListener('mousemove', (event) => {
 
 function drawPlayers() {
     Object.values(players).forEach((player) => {
-        // Calculate the angle from the player to the mouse
         const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
 
-        // Save the current context before rotating
         ctx.save();
-
-        // Move the origin to the player's position
         ctx.translate(player.x - cameraX, player.y - cameraY);
-
-        // Rotate the context to face the mouse
         ctx.rotate(angle);
 
-         // Define a fixed width for the sprite
-         const fixedWidth = 80; // Set your desired width
-         const aspectRatio = survivor.height / survivor.width;
-         const fixedHeight = fixedWidth * aspectRatio; // Keep the height proportional
+        const fixedWidth = 80;
+        const aspectRatio = survivor.height / survivor.width;
+        const fixedHeight = fixedWidth * aspectRatio;
 
-        // Draw the sprite image, centered around the player’s position
+        // Draw the player sprite
         ctx.drawImage(survivor, -fixedWidth / 2, -fixedHeight / 2, fixedWidth, fixedHeight);
 
-        // Restore the context to avoid affecting other drawings
+        // Draw the flash if showFlash is true
+        if (showFlash) {
+            const flashWidth = 30;
+            const flashHeight = 30;
+
+            // Position the flash at the gun tip
+            const gunTipX = fixedWidth / 2;
+            const gunTipY = 0;
+
+            // Additional offset to move it down
+            const additionalYOffset = 16;
+            
+            // Draw the flash image with the adjusted y-position
+            ctx.drawImage(gunFlash, gunTipX, gunTipY - flashHeight / 2 + additionalYOffset, flashWidth, flashHeight);
+        }
+
         ctx.restore();
     });
 }
+
+
 
 function drawZombies() {
     zombies.forEach((zombie) => {
