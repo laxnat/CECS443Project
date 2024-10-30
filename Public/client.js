@@ -35,17 +35,17 @@ let mouseY = 0;
 
 // Survivor sprite
 const survivor = new Image();
-survivor.src = 'Survivor.png';
+survivor.src = 'sprites/Survivor.png';
 
 // Gun flash image
 const gunFlash = new Image();
-gunFlash.src = 'Flash.png';
+gunFlash.src = 'sprites/Flash.png';
 let showFlash = false;
 let flashTimeout;
 
 // Zombie sprite
 const zombieSprite = new Image();
-zombieSprite.src = 'Zombie.png';
+zombieSprite.src = 'sprites/Zombie.png';
 
 // Variable to track whether the image is loaded
 let zombieLoaded = false;
