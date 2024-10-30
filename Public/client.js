@@ -39,9 +39,22 @@ survivor.src = 'Survivor.png';
 
 // Gun flash image
 const gunFlash = new Image();
-gunFlash.src = 'flash.png';
+gunFlash.src = 'Flash.png';
 let showFlash = false;
 let flashTimeout;
+
+// Zombie sprite
+const zombieSprite = new Image();
+zombieSprite.src = 'Zombie.png';
+
+// Variable to track whether the image is loaded
+let zombieLoaded = false;
+
+// Set onload event
+zombieSprite.onload = () => {
+    zombieLoaded = true; // Mark the image as loaded
+    console.log("Zombie sprite loaded!");
+};
 
 // Dynamically resize the canvas to fit the window
 function resizeCanvas() {
@@ -306,12 +319,12 @@ function drawPlayers() {
         ctx.translate(player.x - cameraX, player.y - cameraY);
         ctx.rotate(angle);
 
-        const fixedWidth = 80;
+        const survivorWidth = 80;
         const aspectRatio = survivor.height / survivor.width;
-        const fixedHeight = fixedWidth * aspectRatio;
+        const survivorHeight = survivorWidth * aspectRatio;
 
         // Draw the player sprite
-        ctx.drawImage(survivor, -fixedWidth / 2, -fixedHeight / 2, fixedWidth, fixedHeight);
+        ctx.drawImage(survivor, -survivorWidth / 2, -survivorHeight / 2, survivorWidth, survivorHeight);
 
         // Draw the flash if showFlash is true
         if (showFlash) {
@@ -319,7 +332,7 @@ function drawPlayers() {
             const flashHeight = 30;
 
             // Position the flash at the gun tip
-            const gunTipX = fixedWidth / 2;
+            const gunTipX = survivorWidth / 2;
             const gunTipY = 0;
 
             // Additional offset to move it down
@@ -333,18 +346,31 @@ function drawPlayers() {
     });
 }
 
-
-
 function drawZombies() {
+    if (!zombieLoaded || !(zombieSprite instanceof HTMLImageElement)) {
+        console.log("Zombie sprite is not ready or is not an HTMLImageElement:", zombieSprite);
+        return; // Skip drawing if not fully loaded or valid
+    }
+
+    const zombieWidth = 60;
+    const aspectRatio = zombieSprite.height / zombieSprite.width;
+    const zombieHeight = zombieWidth * aspectRatio;
+
     zombies.forEach((zombie) => {
-        // Draw each zombie
-        ctx.beginPath();
-        ctx.arc(zombie.x - cameraX, zombie.y - cameraY, zombieSize, 0, 2 * Math.PI);
-        ctx.fillStyle = 'green'; // Zombie color
-        ctx.fill();
-        ctx.strokeStyle = 'black'; // Outline color
-        ctx.lineWidth = 2; // Outline width
-        ctx.stroke(); // Draw outline
+        const player = players[playerId];
+        if (player) {
+            // Calculate the angle toward the player
+            const angle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
+
+            ctx.save();
+            ctx.translate(zombie.x - cameraX, zombie.y - cameraY);
+            ctx.rotate(angle);
+
+            // Draw the zombie sprite image
+            ctx.drawImage(zombieSprite, -zombieWidth / 2, -zombieHeight / 2, zombieWidth, zombieHeight);
+
+            ctx.restore();
+        }
     });
 }
 
