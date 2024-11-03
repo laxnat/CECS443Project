@@ -4,71 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zomb.io</title>
-    <style>
-        /* Prevent scrolling and make the body fill the entire viewport */
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Prevent scrollbars */
-        }
-
-        /* Style for the canvas to fill the entire screen */
-        canvas {
-            background-color: #f0f0f0;
-            display: none; /* Initially hidden */
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw; /* 100% of the viewport width */
-            height: 100vh; /* 100% of the viewport height */
-        }
-
-        /* Start screen styles, covering the entire screen */
-        #startScreen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            width: 100vw;
-            background-color: #ccc;
-        }
-
-        /* Button styling for the start screen */
-        button {
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        /* Input styling for player name */
-        input {
-            padding: 10px;
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="startScreen">
         <h1>Welcome to Zomb.io</h1>
         <input type="text" id="playerName" placeholder="Enter your name">
         <button id="startGameBtn">Start Game</button>
+        <div class="lobby-btn-container"></div>
+            <!-- Adjust create lobby button when lobby is created -->
+            <button id="createLobbyBtn">Create Lobby</button>
+            <button id="joinLobbyBtn">Join Lobby</button>
+        </div>
     </div>
 
-    <div id="lobbyScreen">
-        <h2>Select a Lobby</h2>
-        <ul id="lobbyList"></ul> <!-- List of available lobbies -->
-        <input type="text" id="newLobbyName" placeholder="Enter new lobby name" />
-        <button id="createLobbyBtn">Create Lobby</button>
-    </div>    
+    <div id="joinWindow" class="joinWindow">
+        <div class="window-content">
+            <span class="close">&times;</span>
+            <h2>Join Lobby</h2>
+            <input type="text" id="lobbyCode" placeholder="Enter Lobby Code">
+            <button id="submit">Submit</button>
+        </div>
+    </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
+    <script src="joinWindow.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Silkscreen&v1" rel="stylesheet">
+
 
     <script>
         // JavaScript to handle starting the game and showing the canvas
