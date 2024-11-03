@@ -58,6 +58,13 @@
         <button id="startGameBtn">Start Game</button>
     </div>
 
+    <div id="lobbyScreen">
+        <h2>Select a Lobby</h2>
+        <ul id="lobbyList"></ul> <!-- List of available lobbies -->
+        <input type="text" id="newLobbyName" placeholder="Enter new lobby name" />
+        <button id="createLobbyBtn">Create Lobby</button>
+    </div>    
+
     <canvas id="gameCanvas"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
