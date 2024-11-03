@@ -15,11 +15,10 @@ const bulletSize = 5; // Radius of the bullets
 const bulletDamage = 1; // Damage done by each bullet
 
 // Define map dimensions (with additional space for borders)
-const borderThickness = 500; // Border thickness
 const mapWidth = 2000; // Width of the playable area
 const mapHeight = 2000; // Height of the playable area
-const totalMapWidth = mapWidth + borderThickness * 2; // Total width including borders
-const totalMapHeight = mapHeight + borderThickness * 2; // Total height including borders
+const totalMapWidth = mapWidth; // Total width including borders
+const totalMapHeight = mapHeight; // Total height including borders
 
 // Track which keys are currently being pressed
 const keysPressed = {};
@@ -35,17 +34,17 @@ let mouseY = 0;
 
 // Survivor sprite
 const survivor = new Image();
-survivor.src = 'sprites/Survivor.png';
+survivor.src = 'Survivor.png';
 
 // Gun flash image
 const gunFlash = new Image();
-gunFlash.src = 'sprites/Flash.png';
+gunFlash.src = 'Flash.png';
 let showFlash = false;
 let flashTimeout;
 
 // Zombie sprite
 const zombieSprite = new Image();
-zombieSprite.src = 'sprites/Zombie.png';
+zombieSprite.src = 'Zombie.png';
 
 // Variable to track whether the image is loaded
 let zombieLoaded = false;
@@ -85,7 +84,23 @@ startGameBtn.addEventListener('click', () => {
 socket.on('init', (data) => {
     players = data.players;
     playerId = socket.id;
+
+    // Ensure the local player has a health attribute
+    if (!players[playerId]) {
+        // If the player doesn't exist, initialize them
+        players[playerId] = {
+            health: 10, // Example: Max health of 10
+            x: Math.random() * canvas.width, // Random x position
+            y: Math.random() * canvas.height, // Random y position
+            radius: 20, // Default radius
+            color: getRandomColor(), // Function to get a random color
+        };
+    } else {
+        // Existing player, just use the data
+        players[playerId].health = players[playerId].health || 10; // Ensure health is initialized
+    }
 });
+
 
 // Listen for new players
 socket.on('newPlayer', (newPlayer) => {
@@ -95,6 +110,37 @@ socket.on('newPlayer', (newPlayer) => {
 // Listen for player updates
 socket.on('updatePlayers', (updatedPlayers) => {
     players = updatedPlayers;
+});
+
+socket.on('playerHit', ({ id, health }) => {
+    // Update the health of the target player
+    if (players[id]) {
+        players[id].health = health;
+    }
+
+    // Flash red for a split second when hit
+    flashRed(players[id]);
+
+    // Optional: Log for debugging
+    console.log(`Player ${id} hit! Health is now ${health}`);
+});
+
+// Function to make the player flash red temporarily
+function flashRed(player) {
+    const originalColor = player.color; // Store original color
+
+    // Change color to red
+    player.color = 'red';
+    setTimeout(() => {
+        // Reset to original color after 200ms
+        player.color = originalColor;
+    }, 200);
+}
+
+socket.on('playerDied', () => {
+    // Handle player death
+    alert("You died! Refreshing the game...");
+    window.location.reload(); // Refresh the page
 });
 
 // Listen for player disconnects
@@ -162,22 +208,27 @@ function movePlayer() {
     const player = players[playerId];
 
     if (player) {
-        // Calculate new position
-        const newX = player.x + dx;
-        const newY = player.y + dy;
+        // Calculate the new position
+        let newX = player.x + dx;
+        let newY = player.y + dy;
 
-        // Ensure player stays within the map boundaries
-        if (newX > player.radius + borderThickness && newX < totalMapWidth - player.radius - borderThickness) {
+        // Clamp the new position within the map boundaries
+        newX = Math.max(0, Math.min(newX, totalMapWidth));
+        newY = Math.max(0, Math.min(newY, totalMapHeight));
+
+        // Check if the position actually changed
+        if (newX !== player.x || newY !== player.y) {
+            // Update the player's position locally
             player.x = newX;
-        }
-        if (newY > player.radius + borderThickness && newY < totalMapHeight - player.radius - borderThickness) {
             player.y = newY;
-        }
 
-        // Send the player's new position to the server
-        socket.emit('move', { dx, dy });
+            // Send the movement to the server with actual deltas
+            socket.emit('move', { dx, dy });
+        }
     }
 }
+
+
 
 // Function to separate zombies if they get too close
 function avoidOverlappingZombies(zombie) {
@@ -220,6 +271,34 @@ function moveZombies() {
         });
     }
 }
+
+// Function to shoot a bullet toward the mouse cursor
+/*function shootBullet() {
+    const player = players[playerId];
+    if (player) {
+        const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
+
+        // Calculate the position at the gun's tip (just in front of the player)
+        const gunTipX = player.x + Math.cos(angle) * (player.radius + 5); // Adjust to align with gun length
+        const gunTipY = player.y + Math.sin(angle) * (player.radius + 5);
+
+        // Create a new bullet at the gun's tip with the correct direction
+        const bullet = {
+            x: gunTipX,
+            y: gunTipY,
+            damage: bulletDamage,
+            radius: bulletSize, // Radius of the bullet
+            velocityX: Math.cos(angle) * 7, // Bullet speed in X direction
+            velocityY: Math.sin(angle) * 7, // Bullet speed in Y direction
+            move: function () {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+            }
+        };
+
+        bullets.push(bullet);
+    }
+}*/
 
 // Function to shoot a bullet toward the mouse cursor
 function shootBullet() {
@@ -265,6 +344,7 @@ function shootBullet() {
     }
 }
 
+
 // Function to check bullet collisions with zombies
 function checkBulletCollisions() {
     bullets.forEach((bullet, bulletIndex) => {
@@ -288,6 +368,23 @@ function checkBulletCollisions() {
     });
 }
 
+function checkPlayerZombieCollisions() {
+    const player = players[playerId];
+    if (!player) return;
+
+    zombies.forEach((zombie, zombieIndex) => {
+        const dx = player.x - zombie.x;
+        const dy = player.y - zombie.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if the zombie is touching the player
+        if (distance < player.radius + zombieSize) {
+            // Notify the server of the hit and the zombie index
+            socket.emit('playerHit', zombieIndex, playerId);
+        }
+    });
+}
+
 // Track shooting key event
 document.addEventListener('mousedown', (e) => {
     shootBullet();
@@ -296,13 +393,36 @@ document.addEventListener('mousedown', (e) => {
 function drawMap() {
     // Draw the background map
     ctx.fillStyle = '#e0e0e0';
-    ctx.fillRect(-cameraX, -cameraY, totalMapWidth, totalMapHeight); // Draw total map area
+    ctx.fillRect(-cameraX, -cameraY, totalMapWidth, totalMapHeight); // Draw the entire map area
 
-    // Draw borders
+    const gridSize = 100; // Size of each grid square
+
+    ctx.strokeStyle = '#d0d0d0'; // Gridline color (light gray)
+    ctx.lineWidth = 1; // Gridline width
+
+    // Draw vertical gridlines
+    for (let x = 0; x <= totalMapWidth; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x - cameraX, -cameraY); // From top of the map
+        ctx.lineTo(x - cameraX, totalMapHeight - cameraY); // To bottom of the map
+        ctx.stroke();
+    }
+
+    // Draw horizontal gridlines
+    for (let y = 0; y <= totalMapHeight; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(-cameraX, y - cameraY); // From the left of the map
+        ctx.lineTo(totalMapWidth - cameraX, y - cameraY); // To the right of the map
+        ctx.stroke();
+    }
+
+    // Draw the border around the entire map
     ctx.strokeStyle = 'black'; // Border color
-    ctx.lineWidth = borderThickness; // Border thickness
-    ctx.strokeRect(borderThickness / 2 - cameraX, borderThickness / 2 - cameraY, mapWidth + borderThickness, mapHeight + borderThickness);
+    ctx.lineWidth = 2; // Border width
+    ctx.strokeRect(-cameraX, -cameraY, totalMapWidth, totalMapHeight); // Draw the border
 }
+
+
 
 // Capture mouse movements
 canvas.addEventListener('mousemove', (event) => {
@@ -311,6 +431,51 @@ canvas.addEventListener('mousemove', (event) => {
     mouseY = event.clientY - rect.top; // Adjust for canvas position
 });
 
+/*function drawPlayers() {
+    const gunLength = 10;  // Tiny gun length
+    const gunWidth = 5;    // Tiny gun width
+
+    Object.values(players).forEach((player) => {
+        ctx.drawImage(
+            playerImage,
+            player.x - cameraX - player.radius,  // Adjust for camera and player size
+            player.y - cameraY - player.radius,
+            player.radius * 2,  // Width of the image (diameter)
+            player.radius * 2   // Height of the image (diameter)
+        );
+
+        // Calculate the angle from the player to the mouse
+        const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
+
+        // Calculate the gun's position at the player's edge
+        const offsetX = Math.cos(angle) * player.radius; // Gun placed at the edge of the player
+        const offsetY = Math.sin(angle) * player.radius; // Gun placed at the edge of the player
+
+        const gunX = player.x - cameraX + offsetX; // X-coordinate for gun
+        const gunY = player.y - cameraY + offsetY; // Y-coordinate for gun
+
+        // Save the current context
+        ctx.save();
+
+        // Move the origin to the gun's position
+        ctx.translate(gunX, gunY);
+
+        // Rotate the context to align the gun with the player’s orientation
+        ctx.rotate(angle);
+
+        // Draw the tiny gun as a small rectangle
+        ctx.fillStyle = 'grey'; // Gun color
+        ctx.fillRect(-gunLength / 2, -gunWidth / 2, gunLength, gunWidth); // Center the gun around the origin
+
+        // Draw gun outline
+        ctx.strokeStyle = 'black'; // Gun outline color
+        ctx.lineWidth = 1; // Gun outline width
+        ctx.strokeRect(-gunLength / 2, -gunWidth / 2, gunLength, gunWidth); // Draw the gun's outline
+
+        // Restore the context to its original state
+        ctx.restore();
+    });
+}*/
 function drawPlayers() {
     Object.values(players).forEach((player) => {
         const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
@@ -376,38 +541,45 @@ function drawZombies() {
 
 function drawBullets() {
     bullets.forEach((bullet) => {
-        // Draw each bullet
         ctx.beginPath();
         ctx.arc(bullet.x - cameraX, bullet.y - cameraY, bullet.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = 'red'; // Bullet color
+        ctx.fillStyle = 'gray'; // Set bullet color to gray
         ctx.fill();
     });
+}
+
+function drawPlayerHealth() {
+    const player = players[playerId];
+    if (player) {
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Health: ${player.health}`, 10, 30); // Display health in the top-left corner
+    }
 }
 
 function updateGame() {
     movePlayer();
     moveZombies();
     checkBulletCollisions();
+    checkPlayerZombieCollisions(); // Check for player-zombie collisions
     bullets.forEach((bullet) => bullet.move());
 
-    // Center the camera on the player
     const player = players[playerId];
     if (player) {
         cameraX = player.x - canvas.width / 2;
         cameraY = player.y - canvas.height / 2;
     }
 
-    // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw everything
     drawMap();
     drawPlayers();
     drawZombies();
     drawBullets();
+    drawPlayerHealth(); // Display health
 
     requestAnimationFrame(updateGame);
 }
+
 
 // Start the game loop
 requestAnimationFrame(updateGame);
