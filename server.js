@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
+const admin = require('firebase-admin'); // Firebase Admin SDK
 
 const app = express();
 const server = http.createServer(app);
@@ -10,12 +11,24 @@ const io = socketIO(server);
 const PORT = 3000;
 const hit_Cooldown = 1000;
 
+// Initialize Firebase Admin SDK
+const serviceAccount = require('./zombio-93071-firebase-adminsdk-ieiou-7826c12a04.json'); // Path to service account file
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://zombio-93071-default-rtdb.firebaseio.com/" // Replace with your Firebase Database URL if using Realtime Database
+});
+
+// Initialize Firestore (Firebase's database)
+const db = admin.firestore();
+
 let players = {};   // Store all players by socket ID
 let lobbies = {};   // Store all lobbies by name
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+/*
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
@@ -119,6 +132,118 @@ io.on('connection', (socket) => {
         console.log(`Player ${socket.id} removed from game`);
     });
 });
+*/
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    // Handle player joining the game
+    socket.on('joinGame', (data) => {
+        const { name } = data;
+
+        db.collection('players').doc(socket.id).get()
+            .then((doc) => {
+                if (doc.exists) {
+                    // Load player data from Firestore
+                    const playerData = doc.data();
+                    players[socket.id] = playerData;
+                    console.log(`Loaded player data from Firestore:`, playerData);
+                } else {
+                    // New player, set initial data
+                    const newPlayerData = {
+                        id: socket.id,
+                        name: name,
+                        x: Math.random() * 2000,
+                        y: Math.random() * 2000,
+                        radius: 20,
+                        color: getRandomColor(),
+                        opacity: 1,
+                        health: 10,
+                        lastHitTime: 0
+                    };
+
+                    // Save new player to Firestore
+                    db.collection('players').doc(socket.id).set(newPlayerData)
+                        .then(() => {
+                            console.log(`New player ${socket.id} saved to Firestore`);
+                        })
+                        .catch((error) => {
+                            console.error('Error saving new player to Firestore:', error);
+                        });
+
+                    players[socket.id] = newPlayerData;
+                }
+
+                // Send initial game state
+                socket.emit('init', { players });
+
+                // Notify others in the lobby
+                const lobby = findPlayerLobby(socket.id);
+                if (lobby) {
+                    io.to(lobby.name).emit('newPlayer', players[socket.id]);
+                }
+            })
+            .catch((error) => {
+                console.error('Error retrieving player from Firestore:', error);
+            });
+    });
+
+    // Handle player movement
+    socket.on('move', (data) => {
+        const player = players[socket.id];
+        if (player) {
+            player.x += data.dx;
+            player.y += data.dy;
+            player.x = Math.max(0, Math.min(player.x, 2000));
+            player.y = Math.max(0, Math.min(player.y, 2000));
+
+            // Update player position in Firestore
+            db.collection('players').doc(socket.id).update({
+                x: player.x,
+                y: player.y
+            }).catch((error) => {
+                console.error('Error updating player position in Firestore:', error);
+            });
+
+            // Broadcast updated players
+            const lobby = findPlayerLobby(socket.id);
+            if (lobby) {
+                io.to(lobby.name).emit('updatePlayers', players);
+            }
+        }
+    });
+
+    // Handle player disconnection
+    socket.on('disconnect', () => {
+        console.log('A user disconnected:', socket.id);
+
+        db.collection('players').doc(socket.id).delete()
+            .then(() => {
+                console.log(`Player ${socket.id} removed from Firestore`);
+            })
+            .catch((error) => {
+                console.error('Error deleting player from Firestore:', error);
+            });
+
+        // Other disconnection logic
+        const lobby = findPlayerLobby(socket.id);
+        if (lobby) {
+            lobby.players = lobby.players.filter(id => id !== socket.id);
+            io.to(lobby.name).emit('playerDisconnected', socket.id);
+        }
+
+        delete players[socket.id];
+        console.log(`Player ${socket.id} removed from game`);
+    });
+});
+
+// Periodic game loop to broadcast players in each lobby
+setInterval(() => {
+    for (let lobbyName in lobbies) {
+        const lobby = lobbies[lobbyName];
+        io.to(lobbyName).emit('updatePlayers', lobby.players);
+    }
+}, 50);  // Update every 50 ms
 
 // Utility function to get a random color
 function getRandomColor() {
