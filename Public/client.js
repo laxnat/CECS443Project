@@ -1,6 +1,6 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const socket = io(); // Replace with your server URL if necessary
+const socket = io();
 
 let playerId;
 let players = {};
@@ -65,21 +65,6 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas(); // Initial call to set up the canvas
 
-// Start screen elements
-const startScreen = document.getElementById('startScreen');
-const playerNameInput = document.getElementById('playerName');
-const startGameBtn = document.getElementById('startGameBtn');
-
-// Listen for the "Start Game" button click
-startGameBtn.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim();
-    if (playerName) {
-        startScreen.style.display = 'none';
-        canvas.style.display = 'block';
-        socket.emit('joinGame', { name: playerName });
-    }
-});
-
 // Listen for initial game state
 socket.on('init', (data) => {
     players = data.players;
@@ -112,12 +97,17 @@ socket.on('updatePlayers', (updatedPlayers) => {
     players = updatedPlayers;
 });
 
-// Call this function whenever the player's health updates
 socket.on('playerHit', ({ id, health }) => {
     // Update the health of the target player
     if (players[id]) {
         players[id].health = health;
     }
+
+    // Flash red for a split second when hit
+    flashRed(players[id]);
+
+    // Optional: Log for debugging
+    console.log(`Player ${id} hit! Health is now ${health}`);
 });
 
 // Function to make the player flash red temporarily
@@ -471,7 +461,6 @@ canvas.addEventListener('mousemove', (event) => {
         ctx.restore();
     });
 }*/
-
 function drawPlayers() {
     Object.values(players).forEach((player) => {
         const angle = Math.atan2(mouseY - (player.y - cameraY), mouseX - (player.x - cameraX));
@@ -486,7 +475,7 @@ function drawPlayers() {
 
         // Draw the player sprite
         ctx.drawImage(survivor, -survivorWidth / 2, -survivorHeight / 2, survivorWidth, survivorHeight);
-        
+
         // Draw the flash if showFlash is true
         if (showFlash) {
             const flashWidth = 30;
@@ -544,36 +533,14 @@ function drawBullets() {
     });
 }
 
-function drawPlayerHealthBar() {
+function drawPlayerHealth() {
     const player = players[playerId];
     if (player) {
-        const maxHealth = 10; // Assuming max health is 10
-        const healthBarWidth = 40; // Total width of the health bar
-        const healthBarHeight = 5; // Height of the health bar
-        const healthBarX = player.x - cameraX - healthBarWidth / 2; // Center the health bar above the player
-        const healthBarY = player.y - cameraY - player.radius + 75; // Position above the player
-
-        // Calculate the current width of the health bar based on health percentage
-        const currentHealthWidth = (player.health / maxHealth) * healthBarWidth;
-
-        // Choose the color based on health level
-        let healthColor;
-        if (player.health > maxHealth * 0.3) {
-            healthColor = '#08c73e'; // High health
-        } else {
-            healthColor = '#e63535'; // Low health
-        }
-
-        // Draw the health bar background (empty bar)
-        ctx.fillStyle = 'grey';
-        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-
-        // Draw the current health level
-        ctx.fillStyle = healthColor;
-        ctx.fillRect(healthBarX, healthBarY, currentHealthWidth, healthBarHeight);
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Health: ${player.health}`, 10, 30); // Display health in the top-left corner
     }
 }
-
 
 function updateGame() {
     movePlayer();
@@ -593,7 +560,7 @@ function updateGame() {
     drawPlayers();
     drawZombies();
     drawBullets();
-    drawPlayerHealthBar();
+    drawPlayerHealth(); // Display health
 
     requestAnimationFrame(updateGame);
 }
