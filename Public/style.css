@@ -1,27 +1,49 @@
-/* General body and canvas styling */
+/* Prevent scrolling and make the body fill the entire viewport */
 html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow: hidden; /* Prevent scrollbars */
     font-family: Silkscreen;
 }
+
+/* Style for the canvas to fill the entire screen */
 canvas {
     background-color: #f0f0f0;
-    display: none;
+    display: none; /* Initially hidden */
     position: absolute;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100vw; /* 100% of the viewport width */
+    height: 100vh; /* 100% of the viewport height */
 }
 
+/* Start screen styles, covering the entire screen */
 h1 {
-    font-size: 50px;
+    font-size: 60px;
+    color: white;
+    text-shadow: 5px 5px 15px rgba(41, 72, 0, 0.7);
 }
 
-/* Start screen styles */
+/* Input styling for player name */
+input {
+    padding: 10px;
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+/* Button styling for the start screen */
+button {
+    font-family: Silkscreen;
+    border-radius: 5px;
+    background-color: #dfd8ca;
+}
+
+button:hover {
+    background-color: #808080;
+}
+
 #startScreen {
     display: flex;
     flex-direction: column;
@@ -29,16 +51,9 @@ h1 {
     justify-content: center;
     height: 100vh;
     width: 100vw;
-    background-color: #ccc;
+    background: linear-gradient(to bottom, #4b5b2a, #708058);
     font-family: Silkscreen;
-}
 
-button {
-    font-family: Silkscreen;
-}
-
-button:hover {
-    background-color: #808080;
 }
 
 #startGameBtn {
@@ -47,18 +62,66 @@ button:hover {
     font-size: 18px;
     cursor: pointer;
     margin-bottom: 10px;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
 }
 
-/* Profile button in the top-right corner */
-#profileButton {
+/* CUSTOM ALERT POP-UP MESSAGE */
+.custom-alert{
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    padding: 20px;
+    background-color: #dfd8ca;
+    border: 2px solid red;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    font-size: 18px;
+    border-radius: 10px;
+}
+
+.alert-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.alertClose {
     position: absolute;
     top: 10px;
-    right: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
+    right: 15px;
+    font-size: 24px;
+    color: #666;
     cursor: pointer;
 }
 
+.alertClose:hover {
+    color: #333;
+}
+
+#alertBtn {
+    margin-top: 20px;
+    width: 80px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    background-color: #808080;
+    color: #dfd8ca;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
+}
+
+#alertBtn:hover {
+    background-color: #666;
+}
+
+/* BUTTONS */
 .lobby-btn-container {
     display: flex;
     gap: 10px;
@@ -70,40 +133,35 @@ button:hover {
     font-size: 18px;
     cursor: pointer;
     margin-top: 10px;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
 }
 
-/* Input styling for player name */
-input {
-    padding: 10px;
-    font-size: 18px;
-    margin-bottom: 20px;
-}
-
-/* styling for join lobby window */
-.joinWindow {
+/* STYLING FOR WINDOWS */
+.joinWindow, .lobbyWindow {
     display: none;
     position: fixed;
     z-index: 1;
     left: 50%;
     top: 50%;
-    width: 500px;
-    height: 300px;
+    width: 700px;
+    height: 400px;
     overflow: auto; /* allows scrolling if needed */
-    background-color: #fefefe;
+    background-color: #dfd8ca;
     transform: translate(-50%, -50%);
 }
 
-.window-content {
+.join-content, .lobby-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #fefefe;
+    background-color: #dfd8ca;
     margin: auto;
     padding: 20px;
     border: 1px solid #888;
-    width: 500px;
-    height: 300px;
+    width: 700px;
+    height: 400px;
     box-sizing: border-box; /* Ensures padding doesn't expand the width */
 }
 
@@ -124,15 +182,21 @@ input {
     cursor: pointer;
 }
 
-.lobbyCode {
+.lobbyName, .code {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
 }
 
+.inline-label {
+    margin: 0;
+    white-space: nowrap;
+    font-size: 18px;
+}
+
 /* submit button in join lobby window */
-#submit {
+#joinSubmit, #nameSubmit {
     width: 100px;
     height: 50px;
     font-size: 18px;
@@ -140,24 +204,4 @@ input {
     margin-top: 10px;
 }
 
-/* Modal overlay styling, hidden by default */
-#modalOverlay {
-    display: none; /* Initially hidden */
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    align-items: center;
-    justify-content: center;
-}
 
-/* Modal content styling */
-#modalContent {
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    width: 300px;
-    text-align: center;
-}
